@@ -1,0 +1,7 @@
+{
+  "ListenPort": 5999,
+  "DestinationHost": "10.58.255.252",
+  "DestinationPort": 5999,
+  "Kbps": 100,
+  "PacketLossProbability": 0.1
+}

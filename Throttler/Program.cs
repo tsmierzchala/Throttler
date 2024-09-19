@@ -1,24 +1,21 @@
 ﻿using System.Net.Sockets;
 using System.Net;
 using System.Diagnostics;
+using System.Text.Json;
+using Throttler;
 
-if (args.Length < 4)
+var config = LoadConfig();
+if (config == null)
 {
-    Console.WriteLine("Usage: <listenPort> <destinationHost> <destinationPort> <kbps> <packetLossProbability>");
+    Console.WriteLine("Failed to load the configuration file.");
     return;
 }
 
-int listenPort = int.Parse(args[0]);
-string destinationHost = args[1];
-int destinationPort = int.Parse(args[2]);
-int kbps = int.Parse(args[3]);
-double packetLossProbability = double.Parse(args[4]); // Parse packetLossProbability
-
 SetupLogging();
 
-TcpListener listener = new TcpListener(IPAddress.Any, listenPort);
+TcpListener listener = new TcpListener(IPAddress.Any, config.ListenPort);
 listener.Start();
-Log($"Listening on port {listenPort}");
+Log($"Listening on port {config.ListenPort}");
 
 while (true)
 {
@@ -26,11 +23,33 @@ while (true)
     {
         TcpClient client = await listener.AcceptTcpClientAsync();
         Log("Client connected");
-        _ = Task.Run(() => HandleClient(client, destinationHost, destinationPort, kbps, packetLossProbability));
+        _ = Task.Run(() => HandleClient(client, config.DestinationHost, config.DestinationPort, config.Kbps, config.PacketLossProbability));
     }
     catch (Exception ex)
     {
         LogError($"Error: {ex.Message}");
+    }
+}
+
+static Config? LoadConfig()
+{
+    try
+    {
+        string json = File.ReadAllText("config.json");
+        var config = JsonSerializer.Deserialize<Config>(json);
+
+        if (config == null)
+        {
+            LogError("Deserialization resulted in null. Returning default config.");
+            return new Config();  // Return a default config to prevent null references
+        }
+
+        return config;
+    }
+    catch (Exception ex)
+    {
+        LogError($"Error loading config: {ex.Message}");
+        return new Config();
     }
 }
 
