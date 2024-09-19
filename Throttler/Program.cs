@@ -59,11 +59,13 @@ static async Task HandleClient(TcpClient client, string destHost, int destPort, 
 }
 static async Task TransferData(Stream source, Stream destination, int kbps)
 {
-    byte[] buffer = new byte[1024]; // Increase buffer size for efficiency
+    byte[] buffer = new byte[512]; // Increase buffer size for efficiency
     int maxBytesPerInterval = (kbps * 1024) / 8; // Calculate max bytes per second
     int interval = 1000; // Check every second
     int bytesTransferred = 0;
     var stopwatch = new System.Diagnostics.Stopwatch();
+    Random random = new Random();
+    double packetLossProbability = 0.1; // 10 percent packet loss chance (adjust as needed)
 
     stopwatch.Start();
     while (true)
@@ -72,24 +74,28 @@ static async Task TransferData(Stream source, Stream destination, int kbps)
         int bytesRead = await source.ReadAsync(buffer, 0, buffer.Length);
         if (bytesRead == 0) break;
 
-        bytesTransferred += bytesRead;
-        await destination.WriteAsync(buffer, 0, bytesRead);
-        await destination.FlushAsync();
-
-        Log($"Transferred {bytesRead} bytes");
+        // Simulate packet loss
+        if (random.NextDouble() >= packetLossProbability)
+        {
+            await destination.WriteAsync(buffer, 0, bytesRead);
+            await destination.FlushAsync();
+        }
+        else
+        {
+            Log($"Dropped {bytesRead} bytes");
+        }
 
         // Throttle based on bytes transferred and time passed
+        bytesTransferred += bytesRead;
+        Log($"Transferred {bytesRead} bytes");
+
         if (bytesTransferred >= maxBytesPerInterval)
         {
             int elapsed = (int)stopwatch.ElapsedMilliseconds;
-
-            // If elapsed time is less than interval, delay the remaining time
             if (elapsed < interval)
             {
                 await Task.Delay(interval - elapsed);
             }
-
-            // Reset measurements for next interval
             stopwatch.Restart();
             bytesTransferred = 0;
         }
