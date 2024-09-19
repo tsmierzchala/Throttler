@@ -3,11 +3,13 @@
 Console application in .NET for simple port listener and data forwarding to destination with built-in data throttling function.
 In addition, the application simulates random packet loss.
 
-#### Usage: listenPort destinationHost destinationPort kbps packetLossProbability 
+#### Usage: 
+PacketLossProbability - between 0 and 1
 
-packetLossProbability - between 0 and 1
 
-> Example: Throttler.exe 5999 "10.58.255.252" 5999 12 "0,1"
+
+
+
 
 **EDGE**: approximately 236 kbps
 
