@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Throttler": {
+      "commandName": "Project",
+      "commandLineArgs": "5999 \"10.58.255.252\" 5999 1024 \"0,5\""
+    }
+  }
+}

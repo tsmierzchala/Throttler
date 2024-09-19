@@ -4,7 +4,7 @@ using System.Diagnostics;
 
 if (args.Length < 4)
 {
-    Console.WriteLine("Usage: <listenPort> <destinationHost> <destinationPort> <kbps>");
+    Console.WriteLine("Usage: <listenPort> <destinationHost> <destinationPort> <kbps> <packetLossProbability>");
     return;
 }
 
@@ -12,6 +12,7 @@ int listenPort = int.Parse(args[0]);
 string destinationHost = args[1];
 int destinationPort = int.Parse(args[2]);
 int kbps = int.Parse(args[3]);
+double packetLossProbability = double.Parse(args[4]); // Parse packetLossProbability
 
 SetupLogging();
 
@@ -25,7 +26,7 @@ while (true)
     {
         TcpClient client = await listener.AcceptTcpClientAsync();
         Log("Client connected");
-        _ = Task.Run(() => HandleClient(client, destinationHost, destinationPort, kbps));
+        _ = Task.Run(() => HandleClient(client, destinationHost, destinationPort, kbps, packetLossProbability));
     }
     catch (Exception ex)
     {
@@ -33,7 +34,7 @@ while (true)
     }
 }
 
-static async Task HandleClient(TcpClient client, string destHost, int destPort, int kbps)
+static async Task HandleClient(TcpClient client, string destHost, int destPort, int kbps, double packetLossProbability)
 {
     using (client)
     {
@@ -45,8 +46,8 @@ static async Task HandleClient(TcpClient client, string destHost, int destPort, 
             using NetworkStream clientStream = client.GetStream();
             using NetworkStream destStream = destination.GetStream();
 
-            Task clientToDest = TransferData(clientStream, destStream, kbps);
-            Task destToClient = TransferData(destStream, clientStream, kbps);
+            Task clientToDest = TransferData(clientStream, destStream, kbps, packetLossProbability);
+            Task destToClient = TransferData(destStream, clientStream, kbps, packetLossProbability);
 
             await Task.WhenAny(clientToDest, destToClient);
             Log("Data transfer completed");
@@ -57,15 +58,14 @@ static async Task HandleClient(TcpClient client, string destHost, int destPort, 
         }
     }
 }
-static async Task TransferData(Stream source, Stream destination, int kbps)
+static async Task TransferData(Stream source, Stream destination, int kbps, double packetLossProbability)
 {
-    byte[] buffer = new byte[512]; // Increase buffer size for efficiency
+    byte[] buffer = new byte[1024]; // Increase buffer size for efficiency
     int maxBytesPerInterval = (kbps * 1024) / 8; // Calculate max bytes per second
     int interval = 1000; // Check every second
     int bytesTransferred = 0;
     var stopwatch = new System.Diagnostics.Stopwatch();
     Random random = new Random();
-    double packetLossProbability = 0.1; // 10 percent packet loss chance (adjust as needed)
 
     stopwatch.Start();
     while (true)
