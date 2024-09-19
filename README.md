@@ -12,43 +12,21 @@ In addition, the application simulates random packet loss.
 
 
 > [INFO] 19.09.2024 15:08:07: Listening on port 5999
-
+>
 > [INFO] 19.09.2024 15:08:23: Client connected
-
+>
 > [INFO] 19.09.2024 15:08:23: Connected to 10.58.255.252:5999
-
+>
 > [INFO] 19.09.2024 15:08:23: Transferred 512 bytes
-
+>
 > [INFO] 19.09.2024 15:08:23: Transferred 512 bytes
-
+>
 > [INFO] 19.09.2024 15:08:24: Dropped 512 bytes
-
-> [INFO] 19.09.2024 15:08:24: Transferred 512 bytes
-
-> [INFO] 19.09.2024 15:08:26: Transferred 512 bytes
-
-> [INFO] 19.09.2024 15:08:27: Dropped 512 bytes
-
-> [INFO] 19.09.2024 15:08:27: Transferred 512 bytes
-
-> [INFO] 19.09.2024 15:08:27: Transferred 512 bytes
-
-> [INFO] 19.09.2024 15:08:28: Dropped 512 bytes
-
-> [INFO] 19.09.2024 15:08:28: Transferred 512 bytes
-
-> [INFO] 19.09.2024 15:08:28: Dropped 512 bytes
-
-> [INFO] 19.09.2024 15:08:28: Transferred 512 bytes
-
-> [INFO] 19.09.2024 15:08:29: Transferred 512 bytes
-
-> [INFO] 19.09.2024 15:08:34: Dropped 512 bytes
-
+>
 > [INFO] 19.09.2024 15:08:34: Transferred 512 bytes
-
+>
 > [INFO] 19.09.2024 15:08:35: Dropped 355 bytes
-
+>
 > [INFO] 19.09.2024 15:08:35: Transferred 355 bytes
-
+>
 > [INFO] 19.09.2024 15:08:53: Data transfer completed
