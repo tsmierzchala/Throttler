@@ -7,5 +7,6 @@
         public int DestinationPort { get; set; } = 5999;
         public int Kbps { get; set; } = 100;
         public double PacketLossProbability { get; set; } = 0.1;
+        public int BufferSize { get; set; } = 1024;
     }
 }

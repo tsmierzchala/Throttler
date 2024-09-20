@@ -3,6 +3,7 @@ using System.Net;
 using System.Diagnostics;
 using System.Text.Json;
 using Throttler;
+using System;
 
 var config = LoadConfig();
 if (config == null)
@@ -14,46 +15,65 @@ if (config == null)
 SetupLogging();
 
 TcpListener listener = new TcpListener(IPAddress.Any, config.ListenPort);
-listener.Start();
-Log($"Listening on port {config.ListenPort}");
-
-while (true)
+try
 {
-    try
+    listener.Start();
+    Log($"Listening on port {config.ListenPort}");
+    while (true)
     {
-        TcpClient client = await listener.AcceptTcpClientAsync();
-        Log("Client connected");
-        _ = Task.Run(() => HandleClient(client, config.DestinationHost, config.DestinationPort, config.Kbps, config.PacketLossProbability));
-    }
-    catch (Exception ex)
-    {
-        LogError($"Error: {ex.Message}");
+        try
+        {
+            TcpClient client = await listener.AcceptTcpClientAsync();
+            Log("Client connected");
+            _ = Task.Run(() => HandleClient(client, config.DestinationHost, config.DestinationPort, config.Kbps, config.PacketLossProbability, config.BufferSize));
+        }
+        catch (SocketException socketEx)
+        {
+            LogError($"Socket error: {socketEx.Message}");
+        }
+        catch (IOException ioEx)
+        {
+            LogError($"IO error: {ioEx.Message}");
+        }
+        catch (Exception ex)
+        {
+            LogError($"Unexpected error: {ex.Message}");
+        }
     }
 }
-
+catch (Exception ex)
+{
+    LogError($"Could not start listener: {ex.Message}");
+    listener.Stop();
+}
 static Config? LoadConfig()
 {
     try
     {
         string json = File.ReadAllText("config.json");
         var config = JsonSerializer.Deserialize<Config>(json);
-
         if (config == null)
         {
             LogError("Deserialization resulted in null. Returning default config.");
             return new Config();  // Return a default config to prevent null references
         }
-
         return config;
+    }
+    catch (FileNotFoundException)
+    {
+        LogError("Configuration file not found. Returning default config.");
+    }
+    catch (JsonException jsonEx)
+    {
+        LogError($"JSON format error: {jsonEx.Message}. Returning default config.");
     }
     catch (Exception ex)
     {
         LogError($"Error loading config: {ex.Message}");
-        return new Config();
     }
+    return new Config();
 }
-
-static async Task HandleClient(TcpClient client, string destHost, int destPort, int kbps, double packetLossProbability)
+static async Task HandleClient(TcpClient client, string destHost, int destPort, int kbps, double packetLossProbability, int bufferSize)
 {
     using (client)
     {
@@ -61,15 +81,20 @@ static async Task HandleClient(TcpClient client, string destHost, int destPort, 
         {
             using TcpClient destination = new TcpClient(destHost, destPort);
             Log($"Connected to {destHost}:{destPort}");
-
             using NetworkStream clientStream = client.GetStream();
             using NetworkStream destStream = destination.GetStream();
-
-            Task clientToDest = TransferData(clientStream, destStream, kbps, packetLossProbability);
-            Task destToClient = TransferData(destStream, clientStream, kbps, packetLossProbability);
-
+            Task clientToDest = TransferData(clientStream, destStream, kbps, packetLossProbability, bufferSize);
+            Task destToClient = TransferData(destStream, clientStream, kbps, packetLossProbability, bufferSize);
             await Task.WhenAny(clientToDest, destToClient);
             Log("Data transfer completed");
+        }
+        catch (SocketException socketEx)
+        {
+            LogError($"Socket error while handling client: {socketEx.Message}");
+        }
+        catch (IOException ioEx)
+        {
+            LogError($"IO error while handling client: {ioEx.Message}");
         }
         catch (Exception ex)
         {
@@ -77,37 +102,47 @@ static async Task HandleClient(TcpClient client, string destHost, int destPort, 
         }
     }
 }
-static async Task TransferData(Stream source, Stream destination, int kbps, double packetLossProbability)
+static async Task TransferData(Stream source, Stream destination, int kbps, double packetLossProbability, int bufferSize)
 {
-    byte[] buffer = new byte[1024]; // Increase buffer size for efficiency
-    int maxBytesPerInterval = (kbps * 1024) / 8; // Calculate max bytes per second
-    int interval = 1000; // Check every second
+    byte[] buffer = new byte[bufferSize];
+    int maxBytesPerInterval = (kbps * 1024) / 8;
+    int interval = 1000; // ms
     int bytesTransferred = 0;
-    var stopwatch = new System.Diagnostics.Stopwatch();
+    var stopwatch = new Stopwatch();
     Random random = new Random();
-
     stopwatch.Start();
     while (true)
     {
-        // Calculate bytes read in this iteration
-        int bytesRead = await source.ReadAsync(buffer, 0, buffer.Length);
-        if (bytesRead == 0) break;
-
-        // Simulate packet loss
+        int bytesRead;
+        try
+        {
+            bytesRead = await source.ReadAsync(buffer, 0, buffer.Length);
+            if (bytesRead == 0) break;
+        }
+        catch (IOException ioEx)
+        {
+            LogError($"Read error: {ioEx.Message}");
+            break;
+        }
         if (random.NextDouble() >= packetLossProbability)
         {
-            await destination.WriteAsync(buffer, 0, bytesRead);
-            await destination.FlushAsync();
+            try
+            {
+                await destination.WriteAsync(buffer, 0, bytesRead);
+                await destination.FlushAsync();
+            }
+            catch (IOException ioEx)
+            {
+                LogError($"Write error: {ioEx.Message}");
+                break;
+            }
         }
         else
         {
             Log($"Dropped {bytesRead} bytes");
         }
-
-        // Throttle based on bytes transferred and time passed
         bytesTransferred += bytesRead;
         Log($"Transferred {bytesRead} bytes");
-
         if (bytesTransferred >= maxBytesPerInterval)
         {
             int elapsed = (int)stopwatch.ElapsedMilliseconds;
