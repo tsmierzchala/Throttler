@@ -19,7 +19,7 @@ PacketLossProbability - between 0 and 1
 
 **4G LTE**: From 5 Mbps to 100 Mbps (often averaging around 20 Mbps = 20480 kbps)
 
-**Ethernet (standardowy 100BASE-T)**: 100 Mbps = 102400 kbps
+**Ethernet (standard 100BASE-T)**: 100 Mbps = 102400 kbps
 
 
 
